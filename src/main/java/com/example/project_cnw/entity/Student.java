@@ -1,12 +1,14 @@
 package com.example.project_cnw.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.example.project_cnw.common.enums.StudentAffiliation;
+import com.example.project_cnw.common.enums.StudentStatus;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "student")
@@ -27,5 +29,38 @@ public class Student {
     @Column(name = "student_password", nullable = false)
     private String studentPassword;
 
-    @
+    @Column(name = "student_number", unique = true, nullable = false)
+    private String studentNumber;
+
+    @Column(name = "student_name", nullable = false)
+    private String studentName;
+
+    @Column(name = "student_grade", nullable = false)
+    private String studentGrade;
+
+    @Column(name = "student_email", unique = true, nullable = false)
+    private String studentEmail;
+
+    @Column(name = "student_phone_number", nullable = false)
+    private String studentPhoneNumber;
+
+    @Column(name = "student_birth_date", nullable = false)
+    private LocalDate studentBirthDate;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "student_affiliation", nullable = false)
+    private StudentAffiliation studentAffiliation;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "student_status", nullable = false)
+    private StudentStatus studentStatus = StudentStatus.PENDING;
+
+    @Column(name = "student_admission_year", nullable = false)
+    private Integer studentAdmissionYear;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 }
