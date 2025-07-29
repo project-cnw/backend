@@ -6,7 +6,11 @@ public enum StudentAffiliation {
 
     private final String description;
 
-    StudentAffiliation(String description){
+    StudentAffiliation(String description) {
         this.description = description;
+    }
+
+    public String getDescription() {
+        return description;
     }
 }
