@@ -1,6 +1,6 @@
 package com.example.project_cnw.entity;
 
-import com.example.project_cnw.common.enums.StudentAffiliation;
+import com.example.project_cnw.common.enums.SubjectAffiliation;
 import com.example.project_cnw.common.enums.StudentStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 public class Student {
     @Id
     @Column(name = "student_id")
-    private String studentId;
+    private Long studentId;
 
     @Column(name = "school_id", nullable = false)
     private Long schoolId;
@@ -49,7 +49,7 @@ public class Student {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "student_affiliation", nullable = false)
-    private StudentAffiliation studentAffiliation;
+    private SubjectAffiliation studentAffiliation;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "student_status", nullable = false)

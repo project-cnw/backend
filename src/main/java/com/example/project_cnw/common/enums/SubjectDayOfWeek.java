@@ -1,14 +1,15 @@
 package com.example.project_cnw.common.enums;
 
-public enum TeacherStatus {
-    PENDING("승인 대기중"),
-    APPROVED("승인됨"),
-    ON_LEAVE("휴직"),
-    RETIRED("퇴직");
+public enum SubjectDayOfWeek {
+    MONDAY("월요일"),
+    TUESDAY("화요일"),
+    WEDNESDAY("수요일"),
+    THURSDAY("목요일"),
+    FRIDAY("금요일");
 
     private final String description;
 
-    TeacherStatus(String description) {
+    SubjectDayOfWeek(String description) {
         this.description = description;
     }
 

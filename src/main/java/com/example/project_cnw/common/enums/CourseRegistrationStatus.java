@@ -1,14 +1,14 @@
 package com.example.project_cnw.common.enums;
 
-public enum TeacherStatus {
-    PENDING("승인 대기중"),
-    APPROVED("승인됨"),
-    ON_LEAVE("휴직"),
-    RETIRED("퇴직");
+public enum CourseRegistrationStatus {
+    CART("장바구니"),
+    APPLIED("신청완료"),
+    APPROVED("승인완료"),
+    CANCELLED("취소");
 
     private final String description;
 
-    TeacherStatus(String description) {
+    CourseRegistrationStatus(String description){
         this.description = description;
     }
 
