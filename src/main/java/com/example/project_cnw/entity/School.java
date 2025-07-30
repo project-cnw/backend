@@ -5,8 +5,10 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Entity
-@Table
+@Table(name = "school")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -28,7 +30,7 @@ public class School {
     @Column(name = "school_code", unique = true, nullable = false)
     private Integer schoolCode;
 
-    @Column(name = "school_email", nullable = false)
+    @Column(name = "school_email", unique = true, nullable = false)
     private String schoolEmail;
 
     @Column(name = "school_admin_username", unique = true, nullable = false)
@@ -36,5 +38,11 @@ public class School {
 
     @Column(name = "school_admin_password", nullable = false)
     private String schoolAdminPassword;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 }
 
