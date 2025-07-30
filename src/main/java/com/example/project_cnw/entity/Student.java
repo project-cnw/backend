@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -17,6 +18,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class Student {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "student_id")
     private Long studentId;
 
@@ -57,6 +59,9 @@ public class Student {
 
     @Column(name = "student_admission_year", nullable = false)
     private Integer studentAdmissionYear;
+
+    @Column(name = "student_total_credits", precision = 5, scale = 1)
+    private BigDecimal studentTotalCredits = new BigDecimal("192.0");
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
