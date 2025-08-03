@@ -4,19 +4,19 @@ import com.example.project_cnw.common.enums.CourseRegistrationAcademicStatus;
 import com.example.project_cnw.common.enums.CourseRegistrationSemester;
 import com.example.project_cnw.common.enums.CourseRegistrationStatus;
 import com.example.project_cnw.common.enums.CourseRegistrationSubjectApprovalStatus;
+import com.example.project_cnw.entity.datetime.BaseTimeEntity;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "course_registration")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class CourseRegistration {
+public class CourseRegistration extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "course_registration_id")

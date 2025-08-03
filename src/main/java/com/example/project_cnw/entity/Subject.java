@@ -3,19 +3,19 @@ package com.example.project_cnw.entity;
 import com.example.project_cnw.common.enums.SubjectSemester;
 import com.example.project_cnw.common.enums.SubjectStatus;
 import com.example.project_cnw.common.enums.SubjectType;
+import com.example.project_cnw.entity.datetime.BaseTimeEntity;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "subject")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Subject {
+public class Subject extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "subject_id")
@@ -39,7 +39,7 @@ public class Subject {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "subject_status")
-    private SubjectStatus subjectStaus = SubjectStatus.PENDING;
+    private SubjectStatus subjectStatus = SubjectStatus.PENDING;
 
     @Column(name = "subject_max_enrollment", nullable = false)
     private Integer subjectMaxEnrollment;

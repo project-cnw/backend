@@ -1,11 +1,10 @@
 package com.example.project_cnw.entity;
 
-import com.example.project_cnw.common.enums.SubjectAffiliation;
+import com.example.project_cnw.common.enums.StudentAffiliation;
 import com.example.project_cnw.common.enums.StudentStatus;
+import com.example.project_cnw.entity.datetime.BaseTimeEntity;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -13,10 +12,11 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "student")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Student {
+public class Student extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "student_id")
@@ -51,7 +51,7 @@ public class Student {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "student_affiliation", nullable = false)
-    private SubjectAffiliation studentAffiliation;
+    private StudentAffiliation studentAffiliation;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "student_status", nullable = false)
