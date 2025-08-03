@@ -2,6 +2,7 @@ package com.example.project_cnw.common;
 
 public class ApiMappingPattern {
     public static final String API_COMMON = "/api/v2/common";
+    public static final String API_AUTH = "/api/v2/auth";
 
     public static final String API_AUTH_ADMIN = "/api/v2/auth/admin";
     public static final String API_AUTH_TEACHER = "/api/v2/auth/teacher";

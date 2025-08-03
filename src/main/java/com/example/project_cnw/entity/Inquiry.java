@@ -2,19 +2,19 @@ package com.example.project_cnw.entity;
 
 import com.example.project_cnw.common.enums.InquiryAuthorType;
 import com.example.project_cnw.common.enums.InquiryStatus;
+import com.example.project_cnw.entity.datetime.BaseTimeEntity;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "inquiry")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Inquiry {
+public class Inquiry extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "inquiry_id")

@@ -1,19 +1,19 @@
 package com.example.project_cnw.entity;
 
 import com.example.project_cnw.common.enums.CourseHistorySemester;
+import com.example.project_cnw.entity.datetime.BaseTimeEntity;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name ="course_history")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class CourseHistory {
+public class CourseHistory extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "course_history_id")

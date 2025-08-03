@@ -3,20 +3,20 @@ package com.example.project_cnw.entity;
 import com.example.project_cnw.common.enums.SubjectAffiliation;
 import com.example.project_cnw.common.enums.SubjectDayOfWeek;
 import com.example.project_cnw.common.enums.SubjectType;
+import com.example.project_cnw.entity.datetime.BaseTimeEntity;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "subject_master")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class SubjectMaster {
+public class SubjectMaster extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "subject_master_id")
@@ -46,7 +46,7 @@ public class SubjectMaster {
     private String subjectDescription;
 
     @Column(name = "subject_classroom", nullable = false)
-    private String StringClassroom;
+    private String subjectClassroom;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "subject_day_of_week", nullable = false)
