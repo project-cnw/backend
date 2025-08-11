@@ -2,6 +2,11 @@ package com.example.project_cnw.controller;
 
 import com.example.project_cnw.common.ApiMappingPattern;
 import com.example.project_cnw.common.ResponseDto;
+import com.example.project_cnw.dto.request.admin.AdminSetupRequestDto;
+import com.example.project_cnw.dto.request.admin.CreateNoticeRequestDto;
+import com.example.project_cnw.dto.request.admin.UpdateInquiryStatusRequestDto;
+import com.example.project_cnw.dto.request.admin.UpdateNoticeRequestDto;
+import com.example.project_cnw.dto.response.admin.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
