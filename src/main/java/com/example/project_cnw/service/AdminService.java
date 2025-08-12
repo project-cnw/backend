@@ -1,4 +1,4 @@
-package com.example.project_cnw.service.admin;
+package com.example.project_cnw.service;
 
 import com.example.project_cnw.dto.request.admin.*;
 import com.example.project_cnw.dto.response.admin.*;

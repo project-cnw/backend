@@ -1,4 +1,4 @@
-package com.example.project_cnw.service.auth;
+package com.example.project_cnw.service;
 
 import com.example.project_cnw.dto.request.auth.*;
 import com.example.project_cnw.dto.response.auth.*;
