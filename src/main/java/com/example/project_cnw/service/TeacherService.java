@@ -1,4 +1,4 @@
-package com.example.project_cnw.service.teacher;
+package com.example.project_cnw.service;
 
 import com.example.project_cnw.dto.request.student.*;
 import com.example.project_cnw.dto.request.teacher.CreateNoticeRequestDto;

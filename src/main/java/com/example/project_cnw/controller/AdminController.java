@@ -7,7 +7,7 @@ import com.example.project_cnw.dto.request.admin.CreateNoticeRequestDto;
 import com.example.project_cnw.dto.request.admin.UpdateInquiryStatusRequestDto;
 import com.example.project_cnw.dto.request.admin.UpdateNoticeRequestDto;
 import com.example.project_cnw.dto.response.admin.*;
-import com.example.project_cnw.service.admin.AdminService;
+import com.example.project_cnw.service.AdminService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;

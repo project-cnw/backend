@@ -1,4 +1,4 @@
-package com.example.project_cnw.service.student;
+package com.example.project_cnw.service;
 
 import com.example.project_cnw.dto.request.student.*;
 import com.example.project_cnw.dto.response.common.NoticeDetailResponseDto;
@@ -18,6 +18,6 @@ public interface StudentService {
     MyCourseResponseDto getMyCourses();
     void cancelCourseRegistration(Long registrationId);
     CourseHistoryResponseDto getCourseHistory(Integer academicYear, String semester);
-    com.example.project_cnw.response.student.NoticeListResponseDto getNotices(String title, org.springframework.data.domain.Pageable pageable);
+    com.example.project_cnw.dto.response.student.NoticeListResponseDto getNotices(String title, org.springframework.data.domain.Pageable pageable);
     NoticeDetailResponseDto getNoticeDetail(Long noticeId);
 }
