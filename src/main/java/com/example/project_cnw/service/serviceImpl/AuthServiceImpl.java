@@ -4,8 +4,10 @@ import com.example.project_cnw.common.enums.StudentAffiliation;
 import com.example.project_cnw.common.enums.StudentStatus;
 import com.example.project_cnw.common.enums.TeacherStatus;
 import com.example.project_cnw.dto.request.auth.*;
+import com.example.project_cnw.dto.response.auth.FindUsernameResponseDto;
 import com.example.project_cnw.dto.response.auth.LoginResponseDto;
 import com.example.project_cnw.dto.response.auth.RefreshTokenResponseDto;
+import com.example.project_cnw.dto.response.common.SchoolListResponseDto;
 import com.example.project_cnw.entity.*;
 import com.example.project_cnw.exception.DataNotFoundException;
 import com.example.project_cnw.exception.DuplicateDataException;
@@ -16,6 +18,7 @@ import com.example.project_cnw.repository.*;
 import com.example.project_cnw.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,8 +27,10 @@ import javax.naming.AuthenticationException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -105,7 +110,7 @@ public class AuthServiceImpl implements AuthService {
 
             default:
                 throw new InvalidRequestExceprion("올바른 역할을 선택해주세요.");
-            }
+        }
 
         if (!role.equals("ADMIN") && !passwordEncoder.matches(password, encodePassword)) {
             throw new AuthenticationException("비밀번호가 일치하지 않습니다.");
@@ -259,18 +264,159 @@ public class AuthServiceImpl implements AuthService {
     studentRepository.save(student);
 
     emailVerificationRepository.delete(verification);
+}
+
+@Override
+public void teacherSignup(TeacherSignupRequestDto request) {
+    EmailVerification verification = emailVerificationRepository
+            .findByEmailVerificationEmailAndEmailVerificationCode(request.getEmail(), request.getVerificationCode())
+            .orElseThrow(() -> new EmailVerificationException("이메일 인증이 완료되지 않았습니다."));
+
+    if (! verification.getEmailVerificationIsVerified()) {
+        throw new EmailVerificationException("이메일 인증이 완료되지 않았습니다.");
+    }
+
+    if (teacherRepository.existsByTeacherUsername(request.getUsername())) {
+        throw new DuplicateDataException("이미 사용 중인 아이디입니다.");
+    }
+
+    if (teacherRepository.existsByTeacherEmail(request.getEmail())) {
+        throw new DuplicateDataException("이미 사용 중인 이메일입니다.");
+    }
+
+    LocalDate birthDate = LocalDate.parse(request.getBirthDate(), DataTimeFormatter.ofPattern("yyyyMMdd"));
+
+    Teacher teacher = new Teacher();
+    teacher.setSchoolId(school.getSchoolId());
+    teacher.setTeacherUsername(request.getUsername());
+    teacher.setTeacherPassword(passwordEncoder.encode(request.getPassword()));
+    teacher.setTeacherName(request.getName());
+    teacher.setTeacherEmail(request.getEmail());
+    teacher.setTeacherPhoneNumber(request.getPhoneNumber());
+    teacher.setTeacherBirthDate(birthDate);
+    teacher.setTeacherSubject(request.getSubject());
+    teacher.setTeacherStatus(TeacherStatus.PENDING);
+
+    teacherRepository.save(teacher);
+
+    emailVerificateionRepository.delete(verification);
     }
 
     @Override
-    public void teacherSignup(TeacherSignupRequestDto request) {
-        EmailVerification verification = emailVerificationRepository
-                .findByEmailVerificationEmailAndEmailVerificationCode(request.getEmail(), request.getVerificationCode())
-                .orElseThrow(() -> new EmailVerificationException("이메일 인증이 완료되지 않았습니다."));
+    public FindUsernameResponseDto findUsername(FindUsernameRequestDto request) {
+        String email = request.getEmail();
+        String code = request.getVerificationCode();
 
-        if (! verification.getEmailVerificationIsVerified()) {
+        EmailVerification verification = emailVerificationRepository
+                .findByEmailVerificationEmailAndEmailVerificationCode(email, code)
+                .orElseThrow(() -> new EmailVerificationException("잘못된 인증번호입니다."));
+
+        if (!verification.getEmailVerificationIsVerified()) {
             throw new EmailVerificationException("이메일 인증이 완료되지 않았습니다.");
         }
+
+        Optional<Student> student = studentRepository.findByStudentEmail(email);
+        if (student.isPresent()) {
+            return FindUsernameResponseDto.builder()
+                    .username(student.get().getStudentUsername())
+                    .build();
+        }
+
+        Optional<Teacher> teacher = teacherRepository.findByTeacherEmail(email);
+        if (teacher.isPresent()) {
+            return FindUsernameResponseDto.builder()
+                    .username(teacher.get().getTeacherUsername())
+                    .build();
+        }
+
+        Optional<Admin> admin = adminRepository.findByAdminEmail(email);
+        if (admin.isPresent()) {
+            return FindUsernameResponseDto.builder()
+                    .username(admin.get().getAdminUsername())
+                    .build();
+        }
+
+        throw new DataNotFoundException("해당 이메일로 등록된 계정을 찾을 수 없습니다.");
     }
+
+    @Override
+    public void findPassword(FindPasswordRequestDto request) {
+        String username = request.getUsername();
+        String email = request.getEmail();
+        String code = request.getVerificationCode();
+
+        EmailVerification verification = emailVerificationRepository
+                .findByEmailVerificationEmailAndEmailVerificationCode(email, code)
+                .orElseThrow(() -> new EmailVerificationException("잘못된 인증번호입니다."));
+
+        if (!verification.getEmailVerificationIsVerified()) {
+            throw new EmailVerificationException("이메일 인증이 완료되지 않았습니다.");
+        }
+
+        String tempPassword = emailProvider.generateTemporaryPassword();
+        String encodePassword = passwordEncoder.encode(tempPassword);
+
+        Optional<Student> student = studentRepository.findByStudentUsername(username);
+        if (student.isPresent() && student.getStudentEmail().equals(email)) {
+            student.get().setStudentPassword(encodedPassword);
+            studentRepository.save(student.get());
+            emailProvider.sendTemporaryPassword(email, tempPassword);
+            return;
+        }
+
+        Optional<Teacher> teacher = teacherRepository.findByTeacherUsername(username);
+        if (teacher.isPresent() && teacher.get().getTeacherEmail().equals(email)) {
+            teacher.get().setTeacherPassword(encodedPssword);
+            teacherRepository.save(teacher.get());
+            emailProvider.sentTemporaryPassword(email, tempPassword);
+            return;
+        }
+
+        Optional<Admin> admin = adminRepository.findByAdminUsername(username);
+        if (admin.isPresent() && admin.get().getAdminEmail().equals(email)) {
+            admin.get().setAdminPassword(encodedPassword);
+            adminRepository.save(admin.get());
+            emailProvider.sendTemporaryPassword(email, tempPassword);
+            return;
+        }
+
+        throw new DataNotFoundException("아이디와 이메일이 일치하는 계정을 찾을 수 없습니다.");
+    }
+
+    @Override
+    public void changePassword(ChangePasswordRequestDto request) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        log.info("비밀번호 변경 요청: {}", username);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SchoolListResponseDto getSchools() {
+        List<School> schools = schoolRepository.findAll();
+
+        List<SchoolListResponseDto.SchoolInfo> schoolInfos = schools.stream()
+                .map(school -> SchoolListResponseDto.SchoolInfo.builder()
+                        .schoolId(school.getSchoolId())
+                        .schoolName(school.getSchoolName())
+                        .schoolAddress(school.getSchoolAddress())
+                        .schoolContactNumber(school.getSchoolContactNumber())
+                        .schoolCode(school.getSchoolCode())
+                        .schoolEmail(school.getSchoolEmail())
+                        .build())
+                .collect(Collectors.toList());
+
+        return SchoolListResponseDto.builder()
+                .schools(schoolInfos)
+                .build();
+    }
+}
+
+
+
+
+
+
+
 
 
 
