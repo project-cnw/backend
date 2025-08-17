@@ -12,6 +12,7 @@ import com.example.project_cnw.entity.*;
 import com.example.project_cnw.exception.DataNotFoundException;
 import com.example.project_cnw.exception.DuplicateDataException;
 import com.example.project_cnw.exception.EmailVerificationException;
+import com.example.project_cnw.exception.InvalidRequestException;
 import com.example.project_cnw.provider.EmailProvider;
 import com.example.project_cnw.provider.JwtProvider;
 import com.example.project_cnw.repository.*;
@@ -109,7 +110,7 @@ public class AuthServiceImpl implements AuthService {
                 break;
 
             default:
-                throw new InvalidRequestExceprion("올바른 역할을 선택해주세요.");
+                throw new InvalidRequestException("올바른 역할을 선택해주세요.");
         }
 
         if (!role.equals("ADMIN") && !passwordEncoder.matches(password, encodePassword)) {
@@ -129,7 +130,7 @@ public class AuthServiceImpl implements AuthService {
     public RefreshTokenResponseDto refreshToken(RefreshTokenRequestDto request) {
         String refreshToken = request.getRefreshToken();
 
-        if (!jwtProvider.validateToken(refreshToken || !jwtProvider.isRefreshToken)) {
+        if (!jwtProvider.validateToken(refreshToken) || !jwtProvider.isRefreshToken(refreshToken)) {
             throw new AuthenticationException("유효하지 않은 리프레시 토큰입니다.");
         }
 
@@ -182,6 +183,8 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void sendVerificationEmail(SendVerificationRequestDto request) {
 
+        String email = request.getEmail();
+
         emailVerificationRepository.deleteByEmailVerificationEmail(email);
 
         String verificationCode = emailProvider.generateVerificationCode();
@@ -209,7 +212,7 @@ public class AuthServiceImpl implements AuthService {
 
         EmailVerification verification = emailVerificationRepository
                 .findByEmailVerificationEmailAndEmailVerificationCode(email, code)
-                .oreElseThrow(() -> new EmailVerificationException("잘못된 인증번호입니다."));
+                .orElseThrow(() -> new EmailVerificationException("잘못된 인증번호입니다."));
 
         if (verification.getEmailVerificationExpiresAt().isBefore(LocalDateTime.now())) {
             throw new EmailVerificationException("인증번호가 만료되었습니다.");
@@ -243,14 +246,14 @@ public class AuthServiceImpl implements AuthService {
 
         School school = schoolRepository.findBySchoolName(request.getSchoolName())
                 .orElseThrow(() -> new DataNotFoundException("등록되지 않은 학교입니다."));
-    }
 
-    LocalDate birthDate = LocalDate.parse(request.getBirthDate(), DateTimeFormatter.ofPattern("yyyyMMdd"));
+        LocalDate birthDate = LocalDate.parse(request.getBirthDate(), DateTimeFormatter.ofPattern("yyyyMMdd"));
+
 
     Student student = new Student();
     student.setSchoolId(school.getSchoolId());
     student.setStudentUsername(request.getUsername());
-    student.setStudentPassword(psswordEncoder.encode(request.getPassword()));
+    student.setStudentPassword(passwordEncoder.encode(request.getPassword()));
     student.setStudentName(request.getName());
     student.setStudentEmail(request.getEmail());
     student.setStudentPhoneNumber(request.getPhoneNumber());
@@ -284,7 +287,7 @@ public void teacherSignup(TeacherSignupRequestDto request) {
         throw new DuplicateDataException("이미 사용 중인 이메일입니다.");
     }
 
-    LocalDate birthDate = LocalDate.parse(request.getBirthDate(), DataTimeFormatter.ofPattern("yyyyMMdd"));
+    LocalDate birthDate = LocalDate.parse(request.getBirthDate(), DateTimeFormatter.ofPattern("yyyyMMdd"));
 
     Teacher teacher = new Teacher();
     teacher.setSchoolId(school.getSchoolId());
@@ -299,7 +302,7 @@ public void teacherSignup(TeacherSignupRequestDto request) {
 
     teacherRepository.save(teacher);
 
-    emailVerificateionRepository.delete(verification);
+    emailVerificationRepository.delete(verification);
     }
 
     @Override
@@ -366,9 +369,9 @@ public void teacherSignup(TeacherSignupRequestDto request) {
 
         Optional<Teacher> teacher = teacherRepository.findByTeacherUsername(username);
         if (teacher.isPresent() && teacher.get().getTeacherEmail().equals(email)) {
-            teacher.get().setTeacherPassword(encodedPssword);
+            teacher.get().setTeacherPassword(encodedPassword);
             teacherRepository.save(teacher.get());
-            emailProvider.sentTemporaryPassword(email, tempPassword);
+            emailProvider.sendTemporaryPassword(email, tempPassword);
             return;
         }
 
