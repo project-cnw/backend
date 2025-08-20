@@ -1,14 +1,10 @@
 package com.example.project_cnw.service.serviceImpl;
 
-import com.example.project_cnw.common.enums.LectureSemester;
-import com.example.project_cnw.common.enums.StudentStatus;
-import com.example.project_cnw.common.enums.SubjectStatus;
-import com.example.project_cnw.common.enums.TeacherStatus;
-import com.example.project_cnw.dto.request.admin.AdminSetupRequestDto;
-import com.example.project_cnw.dto.request.admin.AdminUpdateProfileRequestDto;
-import com.example.project_cnw.dto.request.admin.CreateLectureRequestDto;
+import com.example.project_cnw.common.enums.*;
+import com.example.project_cnw.dto.request.admin.*;
 import com.example.project_cnw.dto.response.admin.*;
 import com.example.project_cnw.entity.*;
+import com.example.project_cnw.exception.AuthorizationException;
 import com.example.project_cnw.exception.DataNotFoundException;
 import com.example.project_cnw.exception.DuplicateDataException;
 import com.example.project_cnw.provider.EmailProvider;
@@ -18,13 +14,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -381,7 +377,222 @@ public class AdminServiceImpl implements AdminService {
         lectureRepository.save(lecture);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public LectureDetailResponseDto getLectureDetail(Long lectureId) {
+        Lecture lecture = lectureRepository.findById(lectureId)
+                .orElseThrow(() -> new DataNotFoundException("강의를 찾을 수 없습니다."));
+        Subject subject = subjectRepository.findById(lecture.getSubjectId())
+                .orElseThrow(() -> new DataNotFoundException("과목 정보를 찾을 수 없습니다."));
+        SubjectMaster subjectMaster = subjectMasterRepository.findById(subject.getSubjectMasterId())
+                .orElseThrow(() -> new DataNotFoundException("과목 마스터 정보를 찾을 수 없습니다."));
+        Teacher teacher = teacherRepository.findById(lecture.getTeacherId())
+                .orElseThrow(() -> new DataNotFoundException("교사 정보를 찾을 수 없습니다."));
 
+        List<CourseRegistration> registrations = courseRegistrationRepository.findByLectureId(lectureId);
 
+        List<LectureDetailResponseDto.StudentInfo> enrolledStudents = registrations.stream()
+                .map(registration -> {
+                    Student student = studentRepository.findById(registration.getStudentId())
+                            .orElseThrow(() -> new DataNotFoundException("학생 정보를 찾을 수 없습니다."));
 
+                    return LectureDetailResponseDto.StudentInfo.builder()
+                            .studentId(student.getStudentId())
+                            .studentName(student.getStudentName())
+                            .studentNumber(student.getStudentNumber())
+                            .grade(student.getStudentGrade())
+                            .registrationStatus(registration.getCourseRegistrationStatus().getDescription())
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        return LectureDetailResponseDto.builder()
+                .lectureId(lecture.getLectureId())
+                .lectureCode(lecture.getLectureCode())
+                .lectureName(lecture.getLectureName())
+                .subjectName(subjectMaster.getSubjectName())
+                .teacherName(teacher.getTeacherName())
+                .allowedGrade(lecture.getLectureAllowedGrade())
+                .semester(lecture.getLectureSemester().getDescription())
+                .maxEnrollment(lecture.getLectureMaxEnrollment())
+                .currentEnrollment(lecture.getLectureCurrentEnrollment())
+                .enrolledStudents(enrolledStudents)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public NoticeListResponseDto getNotices(String title, Pageable pageable) {
+        Long schoolId = getCurrentSchoolId();
+
+        Page<Notice> noticePage = noticeRepository.findNoticesWithFilters(schoolId, title, null, pageable);
+
+        List<NoticeListResponseDto.NoticeInfo> notices = noticePage.getContent().stream()
+                .map(notice -> NoticeListResponseDto.NoticeInfo.builder()
+                        .noticeId(notice.getNoticeId())
+                        .title(notice.getNoticeTitle())
+                        .authorName(notice.getNoticeAuthorName())
+                        .targetAudience(notice.getNoticeTargetAudience().getDescription())
+                        .startDate(notice.getNoticeStartDate())
+                        .endDate(notice.getNoticeEndDate())
+                        .viewCount(notice.getNoticeViewCount())
+                        .createdAt(notice.getCreatedAt().toLocalDate())
+                        .build())
+                .collect(Collectors.toList());
+
+        return NoticeListResponseDto.builder()
+                .notices(notices)
+                .totalPages(noticePage.getTotalPages())
+                .totalElements(noticePage.getTotalElements())
+                .currentPage(noticePage.getNumber())
+                .build();
+    }
+
+    @Override
+    public void createNotice(CreateNoticeRequestDto request) {
+        Long schoolId = getCurrentSchoolId();
+        String authorName = getCurrentAdminName();
+
+        Notice notice = new Notice();
+        notice.setSchoolId(schoolId);
+        notice.setNoticeAuthorType(NoticeAuthorType.ADMIN);
+        notice.setNoticeAuthorName(authorName);
+        notice.setNoticeTitle(request.getTitle());
+        notice.setNoticeContent(request.getContent());
+        notice.setNoticeTargetAudience(NoticeTargetAudience.valueOf(request.getTargetAudience()));
+        notice.setNoticeStartDate(request.getStartDate());
+        notice.setNoticeEndDate(request.getEndDate());
+
+        noticeRepository.save(notice);
+    }
+
+    @Override
+    public void updateNotice(Long noticeId, UpdateNoticeRequestDto request) {
+        Notice notice = noticeRepository.findById(noticeId)
+                .orElseThrow(() -> new DataNotFoundException("공지사항을 찾을 수 없습니다."));
+
+        if (!notice.getSchoolId().equals(getCurrentSchoolId())) {
+            throw new AuthorizationException("권한이 없습니다.");
+        }
+
+        notice.setNoticeTitle(request.getTitle());
+        notice.setNoticeContent(request.getContent());
+        notice.setNoticeTargetAudience(NoticeTargetAudience.valueOf(request.getTargetAudience()));
+        notice.setNoticeStartDate(request.getStartDate());
+        notice.setNoticeEndDate(request.getEndDate());
+
+        noticeRepository.save(notice);
+    }
+
+    @Override
+    public void deleteNotice(Long noticeId) {
+        Notice notice = noticeRepository.findById(noticeId)
+                .orElseThrow(() -> new DataNotFoundException("공지사항을 찾을 수 없습니다."));
+
+        if (!notice.getSchoolId().equals(getCurrentSchoolId())) {
+            throw new AuthorizationException("권한이 없습니다.");
+        }
+
+        noticeRepository.delete(notice);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public InquiryListResponseDto getInquiries(String status, Pageable pageable) {
+        Long schoolId = getCurrentSchoolId();
+        InquiryStatus inquiryStatus = status != null ? InquiryStatus.valueOf(status) : null;
+
+        Page<Inquiry> inquiryPage = inquiryRepository.findBySchoolIdAndStatus(schoolId,inquiryStatus, pageable);
+
+        List<InquiryListResponseDto.InquiryInfo> inquiries = inquiryPage.getContent().stream()
+                .map(inquiry -> InquiryListResponseDto.InquiryInfo.builder()
+                        .inquiryId(inquiry.getInquiryId())
+                        .title(inquiry.getInquiryTitle())
+                        .content(inquiry.getInquiryContent())
+                        .authorType(inquiry.getInquiryAuthorType().getDescription())
+                        .status(inquiry.getInquiryStatus().getDescription())
+                        .createdAt(inquiry.getCreatedAt().toLocalDate())
+                        .build())
+                .collect(Collectors.toList());
+
+        return InquiryListResponseDto.builder()
+                .inquiries(inquiries)
+                .totalPages(inquiryPage.getTotalPages())
+                .totalElements(inquiryPage.getTotalElements())
+                .currentPage(inquiryPage.getNumber())
+                .build();
+    }
+
+    @Override
+    public void updateInquiryStatus(Long inquiryId, UpdateInquiryStatusRequestDto request) {
+        Inquiry inquiry = inquiryRepository.findById(inquiryId)
+                .orElseThrow(() -> new DataNotFoundException("문의사항을 찾을 수 없습니다."));
+
+        if (!inquiry.getSchoolId().equals(getCurrentSchoolId())) {
+            throw new AuthorizationException("권한이 없습니다.");
+        }
+
+        inquiry.setInquiryStatus(InquiryStatus.valueOf(request.getStatus()));
+        inquiryRepository.save(inquiry);
+    }
+
+    @Override
+    @Transactional
+    public AdminDashboardStatsResponseDto getDashboardStats() {
+        Long schoolId = getCurrentSchoolId();
+
+        long totalStudents = studentRepository.countBySchoolId(schoolId);
+        long totalTeachers = teacherRepository.countBySchoolId(schoolId);
+        long totalSubjects = subjectRepository.countBySchoolId(schoolId);
+        long totalLectures = lectureRepository.countBySchoolId(schoolId);
+        long pendingApprovals = studentRepository.countBySchoolIdAndStudentStatus(schoolId, StudentStatus.PENDING) +
+                teacherRepository.countBySchoolIdAndTeacherStatus(schoolId, TeacherStatus.PENDING) +
+                subjectRepository.countBySchoolIdAndSubjectStatus(schoolId, SubjectStatus.PENDING);
+        long totalNotices = noticeRepository.countBySchoolIdAndCreatedAtAfter(schoolId, LocalDateTime.now().minusDays(30));
+        long newInquiries = inquiryRepository.countBySchoolIdAndInquiryStatus(schoolId, InquiryStatus.NEW);
+
+        return AdminDashboardStatsResponseDto.builder()
+                .totalStudents(totalStudents)
+                .totalTeachers(totalTeachers)
+                .totalSubjects(totalSubjects)
+                .totalLectures(totalLectures)
+                .pendingApprovals(pendingApprovals)
+                .totalNotices(totalNotices)
+                .newInquiries(newInquiries)
+                .build();
+    }
+
+    private String getSchoolName(Long schoolId) {
+        return schoolRepository.findById(schoolId)
+                .map(School::getSchoolName)
+                .orElse("Unknown School");
+    }
+
+    private String getCurrentAdminName() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        School school =schoolRepository.findBySchoolAdminUsername(username)
+                .orElseThrow(() -> new DataNotFoundException("학교 정보를 찾을 수 없습니다."));
+
+        return adminRepository.findSchoolId(school.getSchoolId())
+                .map(Admin::getAdminName)
+                .orElse("관리자");
+    }
+
+    private void createLectureFromSubject(Subject subject) {
+        SubjectMaster subjectMaster = subjectMasterRepository.findById(subject.getSubjectMasterId())
+                .orElseThrow(() -> new DataNotFoundException("과목 마스터 정볼르 찾을 수 없습니다."));
+
+        Lecture lecture = new Lecture();
+        lecture.setSchoolId(subject.getSchoolId());
+        lecture.setSubjectId(subject.getSubjectId());
+        lecture.setTeacherId(subject.getTeacherId());
+        lecture.setLectureName(subjectMaster.getSubjectName());
+        lecture.setLectureCode(subjectMaster.getSubjectCode() + "_" + System.currentTimeMillis());
+        lecture.setLectureAcademicYear(LocalDate.now().getYear());
+        lecture.setLectureSemester(LectureSemester.valueOf(subject.getSubjectSemester().name()));
+        lecture.setLectureAllowedGrade(subject.getSubjectTargetGrade());
+        lecture.setLectureMaxEnrollment(subject.getSubjectMaxEnrollment());
+
+        lectureRepository.save(lecture);
+    }
 }
