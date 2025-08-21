@@ -135,7 +135,7 @@ public class AdminController {
     @Operation(summary = "공지사항 목록 조회", description = "공지사항 목록을 조회합니다.")
     public ResponseEntity<ResponseDto> getNotices(
             @RequestParam(required = false) String title,
-            @PageableDefault(size = 20) Pageable) {
+            @PageableDefault(size = 20) Pageable pageable) {
         NoticeListResponseDto response = adminService.getNotices(title, pageable);
         return ResponseEntity.ok(ResponseDto.success("공지사항 목록을 조회했습니다.", response));
     }
