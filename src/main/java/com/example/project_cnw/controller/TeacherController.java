@@ -109,11 +109,4 @@ public class TeacherController {
         var response = teacherService.getNoticeDetail(noticeId);
         return ResponseEntity.ok(ResponseDto.success("공지사항 상세 정보를 조회했습니다.", response));
     }
-
-
-
-
-
-
-
 }
