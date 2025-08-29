@@ -1,21 +1,28 @@
 package com.example.project_cnw.service.serviceImpl;
 
 import com.example.project_cnw.common.enums.CourseRegistrationStatus;
+import com.example.project_cnw.common.enums.NoticeTargetAudience;
 import com.example.project_cnw.dto.request.student.UpdateProfileRequestDto;
+import com.example.project_cnw.dto.response.common.NoticeDetailResponseDto;
 import com.example.project_cnw.dto.response.student.CourseHistoryResponseDto;
+import com.example.project_cnw.dto.response.student.NoticeListResponseDto;
 import com.example.project_cnw.dto.response.student.StudentDashboardResponseDto;
 import com.example.project_cnw.dto.response.student.StudentProfileResponseDto;
 import com.example.project_cnw.entity.*;
+import com.example.project_cnw.exception.AuthorizationException;
 import com.example.project_cnw.exception.DataNotFoundException;
 import com.example.project_cnw.repository.*;
 import com.example.project_cnw.service.StudentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -122,7 +129,95 @@ public class StudentServiceImpl implements StudentService {
                             .build();
     }
 
-    
+    @Override
+    @Transactional(readOnly = true)
+    public com.example.project_cnw.dto.response.student.NoticeListResponseDto getNotices(String title, Pageable pageable) {
+        Student student = getCurrentStudent();
+
+        Page<Notice> noticePage = noticeRepository.findActiveNoticesForUser(
+                student.getSchoolId(),
+                NoticeTargetAudience.STUDENT,
+                LocalDate.now(),
+                pageable
+        );
+
+        List<com.example.project_cnw.dto.response.student.NoticeListResponseDto.NoticeInfo> notices =
+                noticePage.getContent().stream()
+                        .map(notice -> NoticeListResponseDto.NoticeListResponseDto.NoticeInfo.builder()
+                                .noticeId(notice.getNoticeId())
+                                .title(notice.getNoticeId())
+                                .authorName(notice.getNoticeAuthorName())
+                                .createdAt(notice.getCreatedAt().toLocalDate())
+                                .viewCount(notice.getNoticeViewCount())
+                                .build())
+                        .collect(Collectors.toList());
+
+        return com.example.project_cnw.dto.response.student.NoticeListResponseDto.builder()
+                .notices(notices)
+                .totalPages(noticePage.getTotalPage())
+                .totalElements(noticePage.getTotalElements())
+                .currentPage(noticePage.getNumber())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public NoticeDetailResponseDto getNoticeDetail(Long noticeId) {
+        Student student = getCurrentStudent();
+
+        Notice notice = noticeRepository.findById(noticeId)
+                .orElseThrow(() -> new DataNotFoundException("공지사항을 찾을 수 없습니다."));
+
+        if (!notice.getSchoolId().equals(student.getSchoolId()) ||
+                (notice.getNoticeTargetAudience() != NoticeTargetAudience.ALL &&
+                        notice.getNoticeTargetAudience() != NoticeTargetAudience.STUDENT)) {
+            throw new AuthorizationException("해당 공지사항을 볼 권한이 없습니다.");
+        }
+
+        notice.setNoticeViewCount(notice.getNoticeViewCount() +1);
+        noticeRepository.save(notice);
+
+        return NoticeDetailResponseDto.builder()
+                .noticeId(notice.getNoticeId())
+                .title(notice.getNoticeTitle())
+                .content(notice.getNoticeContent())
+                .authorName(notice.getNoticeAuthorName())
+                .authorType(notice.getNoticeAuthorType().getDescription())
+                .targetAudience(notice.getNoticeTargetAudience().getDescription())
+                .startDate(notice.getNoticeStartDate())
+                .endDate(notice.getNoticeEndDate())
+                .viewCount(notice.getNoticeViewCount())
+                .createdAt(notice.getCreatedAt().toLocalDate())
+                .build();
+    }
+
+    private String getCurrentSemester() {
+        int currentMonth = LocalDate.now().getMonth().getValue();
+        return (currentMonth >= 3 && currentMonth <= 8) ? "FIRST" : "SECOND";
+    } getSubjectId()).orElse(null);
+        if (subject != null) {
+            SubjectMaster subjectMaster = subjectMasterRepository.findById(subject.getSubjectMasterId()).orElse(null);
+            if (subjectMaster != null) {
+                return subjectMaster.getSubjectCredits().longValue();
+            }
+            return 0;
+    })
+    .sum();
+
+long availableCredits = 18 - appliedCredits;
+long totalLectures = lectureRepository.countBySchoolId(student.getSchoolId());
+long newNotices = noticeRepository.countBySchoolIdAndCreatedAtAfter(
+        student.getSchoolId(),
+        LocalDateTime.now().minusDays(7)
+);
+
+return StudentDashboardResponseDto.builder()
+        .availableCredits(Math.max(0, availableCredits))
+            .appliedCredits(appliedCredits)
+    .totalLectures(totalLectures)
+    .newNotices(newNotices)
+    .build();
+}
 
 
 
