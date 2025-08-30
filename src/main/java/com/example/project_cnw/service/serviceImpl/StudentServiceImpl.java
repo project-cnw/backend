@@ -194,30 +194,52 @@ public class StudentServiceImpl implements StudentService {
     private String getCurrentSemester() {
         int currentMonth = LocalDate.now().getMonth().getValue();
         return (currentMonth >= 3 && currentMonth <= 8) ? "FIRST" : "SECOND";
-    } getSubjectId()).orElse(null);
-        if (subject != null) {
-            SubjectMaster subjectMaster = subjectMasterRepository.findById(subject.getSubjectMasterId()).orElse(null);
-            if (subjectMaster != null) {
-                return subjectMaster.getSubjectCredits().longValue();
-            }
-            return 0;
-    })
-    .sum();
+    }
 
-long availableCredits = 18 - appliedCredits;
-long totalLectures = lectureRepository.countBySchoolId(student.getSchoolId());
-long newNotices = noticeRepository.countBySchoolIdAndCreatedAtAfter(
-        student.getSchoolId(),
-        LocalDateTime.now().minusDays(7)
-);
+    @Override
+    @Transactional(readOnly = true)
+    public StudentDashboardResponseDto getDashboardStats() {
+        Student student = getCurrentStudent();
 
-return StudentDashboardResponseDto.builder()
-        .availableCredits(Math.max(0, availableCredits))
-            .appliedCredits(appliedCredits)
-    .totalLectures(totalLectures)
-    .newNotices(newNotices)
-    .build();
-}
+        List<CourseRegistration> currentRegistrations = courseRegistrationRepository
+                .findByStudentIdAndAcademicYearAndSemester(
+                        student.getStudentId(),
+                        LocalDate.now().getYear(),
+                        getCurrentSemester()
+                );
+
+        long appliedCredits = currentRegistrations.stream()
+                .filter(reg -> reg.getCourseRegistrationStatus() == CourseRegistrationStatus.APPLIED ||
+                        reg.getCourseRegistrationStatus() == CourseRegistrationStatus.APPROVED)
+                .mapToLong(reg -> {
+                    Lecture lecture = lectureRepository.findById(reg.getLectureId()).orElse(null);
+                    if (lecture != null) {
+                        Subject subject = subjectRepository.findById(lecture.getSubjectId()).orElse(null);
+                        if (subject != null) {
+                            SubjectMaster subjectMaster = subjectMasterRepository.findById(subject.getSubjectMasterId()).orElse(null);
+                            if (subjectMaster != null) {
+                                return subjectMaster.getSubjectCredits().longValue();
+                            }
+                        }
+                    }
+                    return 0L;
+                })
+                .sum();
+
+        long availableCredits = 18 - appliedCredits;
+        long totalLectures = lectureRepository.countBySchoolId(student.getSchoolId());
+        long newNotices = noticeRepository.countBySchoolIdAndCreatedAtAfter(
+                student.getSchoolId(),
+                LocalDateTime.now().minusDays(7)
+        );
+
+        return StudentDashboardResponseDto.builder()
+                .availableCredits(Math.max(0, availableCredits))
+                .appliedCredits(appliedCredits)
+                .totalLectures(totalLectures)
+                .newNotices(newNotices)
+                .build();
+    }
 
 
 
