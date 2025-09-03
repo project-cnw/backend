@@ -4,10 +4,7 @@ import com.example.project_cnw.common.enums.CourseRegistrationStatus;
 import com.example.project_cnw.common.enums.NoticeTargetAudience;
 import com.example.project_cnw.dto.request.student.UpdateProfileRequestDto;
 import com.example.project_cnw.dto.response.common.NoticeDetailResponseDto;
-import com.example.project_cnw.dto.response.student.CourseHistoryResponseDto;
-import com.example.project_cnw.dto.response.student.NoticeListResponseDto;
-import com.example.project_cnw.dto.response.student.StudentDashboardResponseDto;
-import com.example.project_cnw.dto.response.student.StudentProfileResponseDto;
+import com.example.project_cnw.dto.response.student.*;
 import com.example.project_cnw.entity.*;
 import com.example.project_cnw.exception.AuthorizationException;
 import com.example.project_cnw.exception.DataNotFoundException;
@@ -238,6 +235,50 @@ public class StudentServiceImpl implements StudentService {
                 .appliedCredits(appliedCredits)
                 .totalLectures(totalLectures)
                 .newNotices(newNotices)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TimetableResponseDto gettimetable(String academicYear, String semester, String grade,
+                                             String affiliation, String subjectType, String subjectName,
+                                             String teacherName, String subjectCode, Pageable pageable) {
+        Student student = getCurrentStudent();
+
+        Page<Lecture> lecturePage = lectureRepository.findLecturesWithFilters(
+                student.getSchoolId(), grade, subjectName, teacherName, pageable);
+
+        List<TimetableResponseDto.LectureInfo> lectures = lecturePage.getContent().stream()
+                .map(lecture -> {
+                    Subject subject = subjectRepository.findById(lecture.getSubjectId()).orElse(null);
+                    SubjectMaster subjectMaster = subject != null ?
+                            subjectMasterRepository.findById(subject.getSubjectMasterId()).orElse(null) : null;
+                    Teacher teacher = teacherRepository.findById(lecture.getTeacherId()).orElse(null);
+
+                    if (subjectMaster = null || teacher = null) return null;
+
+                    return TimetableResponseDto.LectureInfo.builder()
+                            .lectureId(lecture.getLectureId())
+                            .lectureCode(lecture.getLectureCode())
+                            .subjectName(subjectMaster.getSubjectName())
+                            .teacherName(teacher.getTeacherName())
+                            .allowedGrade(lecture.getLectureAllowedGrade())
+                            .credits(subjectMaster.getSubjectCredits().intValue())
+                            .maxEnrollment(lecture.getLectureMaxEnrollment())
+                            .currentEnrollment(lecture.getLectureCurrentEnrollment())
+                            .dayOfWeek(subjectMaster.getSubjectDayOfWeek().getDescription())
+                            .classPeriod(subjectMaster.getSubjectClassPeriod())
+                            .classroom(subjectMaster.getSubjectClassroom())
+                            .build();
+                })
+                .filter(info -> info != null)
+                .collect(Collectors.toList());
+
+        return TimetableResponseDto.builder()
+                .lectures(lectures)
+                .totalPages(lecturePage.getTotalPages())
+                .totalElements(lecturePage.getTotalElements())
+                .currentPage(lecturePage.getNumber())
                 .build();
     }
 
