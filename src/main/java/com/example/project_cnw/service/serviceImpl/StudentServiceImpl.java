@@ -282,6 +282,55 @@ public class StudentServiceImpl implements StudentService {
                 .build();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public CourseRegistrationListResponseDto getCourseRegistrationList() {
+        Student student = getCurrentStudent();
+
+        List<Lecture> availableLectures = lectureRepository.findBySchoolIdAndAcademicYearAndSemester(
+                student.getSchoolId(),
+                LocalDate.now().getYear(),
+                getCurrentSemester()
+        );
+
+        List<CourseRegistrationListResponseDto.AvailableCourse> availableCourses = availableLectures.stream()
+                .map(lecture -> {
+                    Subject subject = subjectRepository.findById(lecture.getSubjectId()).orElse(null);
+                    SubjectMaster subjectMaster = subject != null ?
+                            subjectMasterRepository.findById(subject.getSubjectId()).orElse(null) : null;
+                    Teacher teacher = teacherRepository.findById(lecture.getTeacherId()).orElse(null);
+
+                    if (subjectMaster = null || teacher = null) return null;
+
+                    Long currentEnrollment = courseRegistrationRepository.countEnrolledByLectureId(lecture.getLectureId());
+
+                    boolean isRegistered = courseRegistrationRepository.existsByStudentIdAndLectureId(
+                            student.getStudentId(), lecture.getLectureId());
+                    String status = isRegistered ? "대기" : "신청";
+
+                    return CourseRegistrationListResponseDto.AvailableCourse.builder()
+                            .lectureId(lecture.getLectureId())
+                            .subjectName(subjectMaster.getSubjectName())
+                            .teacherName(teacher.getTeacherName())
+                            .grade(lecture.getLectureAllowedGrade())
+                            .credits(subjectMaster.getSubjectCredits().inValue())
+                            .capacity(currentEnrollment + "/" + lecture.getLectureMaxEnrollment())
+                            .status(status)
+                            .dayOfWeek(subjectMaster.getSubjectDayOfWeek().getDescription())
+                            .classPeriod(subjectMaster.getSubjectClassPeriod())
+                            .build();
+                })
+                .filter(course -> course != null)
+                .collect(Collectors.toList());
+
+        List<CourseRegistration> cartItems = courseRegistrationRepository
+                .findByStudentIdAndCourseRegistrationStatus(student.getStudentId(), CourseRegistrationStatus.CART);
+
+        List<>
+
+
+    }
+
 
 
 
