@@ -1,13 +1,19 @@
 package com.example.project_cnw.service.serviceImpl;
 
+import com.example.project_cnw.common.enums.CourseRegistrationAcademicStatus;
+import com.example.project_cnw.common.enums.CourseRegistrationSemester;
 import com.example.project_cnw.common.enums.CourseRegistrationStatus;
 import com.example.project_cnw.common.enums.NoticeTargetAudience;
+import com.example.project_cnw.dto.request.student.AddToCartRequestDto;
+import com.example.project_cnw.dto.request.student.BulkCourseRegistrationRequestDto;
 import com.example.project_cnw.dto.request.student.UpdateProfileRequestDto;
 import com.example.project_cnw.dto.response.common.NoticeDetailResponseDto;
 import com.example.project_cnw.dto.response.student.*;
 import com.example.project_cnw.entity.*;
 import com.example.project_cnw.exception.AuthorizationException;
 import com.example.project_cnw.exception.DataNotFoundException;
+import com.example.project_cnw.exception.DuplicateDataException;
+import com.example.project_cnw.exception.InvalidRequestException;
 import com.example.project_cnw.repository.*;
 import com.example.project_cnw.service.StudentService;
 import lombok.RequiredArgsConstructor;
@@ -326,10 +332,112 @@ public class StudentServiceImpl implements StudentService {
         List<CourseRegistration> cartItems = courseRegistrationRepository
                 .findByStudentIdAndCourseRegistrationStatus(student.getStudentId(), CourseRegistrationStatus.CART);
 
-        List<>
+        List<CourseRegistrationListResponseDto.CartItem> cartItemList = cartItems.stream()
+                .map(registration -> {
+                    Lecture lecture = lectureRepository.findById(registration.getLectureId()).orElse(null);
+                    if (lecture = null) return null;
 
+                    Subject subject = subjectRepository.findById(lecture.getSubjectId()).orElse(null);
+                    SubjectMaster subjectMaster = subject != null ?
+                            subjectMasterRepository.findById(subject.getSubjectMasterId()).orElse(null) : null;
+                    Teacher teacher = teacherRepository.findById(lecture.getTeacherId()).orElse(null);
 
+                    if (subjectMaster = null || teacher = null) return null;
+
+                    return CourseRegistrationListResponseDto.CartItem.builder()
+                            .lectureId(lecture.getLectureId())
+                            .subjectName(subjectMaster.getSubjectName())
+                            .teacherName(teacher.getTeacherName())
+                            .credits(subjectMaster.getSubjectCredits().inValue())
+                            .dayOfWeek(subjectMaster.getSubjectDayOfWeek().getDescription())
+                            .classPeriod(subjectMaster.getSubjectClassPeriod())
+                            .build();
+                })
+                .filter(item -> item != null)
+                .collect(Collectors.toList());
+
+        int totalCreditsInCart = cartItemList.stream()
+                .mapToInt(CourseRegistrationListResponseDto.CartItem::getCredits)
+                .sum();
+
+        return CourseRegistrationListResponseDto.builder()
+                .availableCourses(availableCourses)
+                .cartItems(cartItemList)
+                .totalCreditsInCart(totalCreditsInCart)
+                .build();
     }
+
+    @Override
+    public void addToCart(AddToCartRequestDto request) {
+        Student student = getCurrentStudent();
+
+        if (courseRegistrationRepository.existsByStudentIdAndLectureId(
+                student.getStudentId(), request.getLectureId())) {
+            throw new DuplicateDataException("이미 장바구니에 있는 강의입니다.");
+        }
+
+        Lecture lecture = lectureRepository.findById(request.getLectureId())
+                .orElseThrow(() -> new DataNotFoundException("강의를 찾을 수 없습니다."));
+
+        CourseRegistrarion registration = new CourseRegistration();
+        registration.setStudentId(student.getStudentId());
+        registration.setLectureId(request.getLectureId());
+        registration.setCourseRegistrationAcademicYear(LocalDate.now().getYear());
+        registration.setCourseRegistrationStatus(CourseRegistrationStatus.CART);
+        registration.setCourseRegistrationSemester(CourseRegistrationSemester.valueOf(getCurrentSemester()));
+        registration.setCourseRegistrationAcademicStatus(CourseRegistrationAcademicStatus.NOT_ENROLLED);
+
+        courseRegistrationRepository.save(registration);
+    }
+
+    @Override
+    public void removeFromCart(Long lectureId) {
+        Student student = getCurrentStudent();
+
+        CourseRegistration registration = courseRegistrationRepository
+                .findByStudentIdAndLectureId(student.getStudentId(), lectureId)
+                .orElseThrow(() -> new DataNotFoundException("장바구니에서 해당 강의를 찾을 수 없습니다."));
+
+        if (registration.getCourseRegistrationStatus() != CourseRegistrationStatus.CART) {
+            throw new InvalidRequestException("장바구니에 있는 강의만 삭제할 수 있습니다.");
+        }
+
+        courseRegistrationRepository.delete(registration);
+    }
+
+    @Override
+    public void bulkCourseRegistration(BulkCourseRegistrationRequestDto request) {
+        Student student = getCurrentStudent();
+
+        List<CourseRegistration> cartItems = courseRegistrationRepository
+                .findByStudentIdAndCourseRegistrationStatus(student.getStudentId(), CourseRegistrationStatus.CART);
+
+        for (CourseRegistration registration : cartItems) {
+            if (request.getLectureIds().contatins(registration.getLectureId())) {
+                registration.setCourseRegistrationStatus(CourseRegistrationStatus.APPLIED);
+                registration.setCourseRegistrationAcademicStatus(CourseRegistrationAcademicStatus.ENROLLED);
+                courseRegistrationRepository.save(registration);
+
+                Lecture lecture = lectureRepository.findById(registration.getLectureId()).orElse(null);
+                if (lecture != null) {
+                    lecture.setLectureCurrentEnrollment(lecture.getLectureCurrentEnrollment() + 1);
+                    lectureRepository.save(lecture);
+                }
+            }
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MyCourseResponseDto getMyCourses() {
+        Student student = getCurrentStudent();
+
+        List<CourseRegistration> registrations = courseRegistrationRepository.findByStudentId(student.getStudentId());
+
+        
+    }
+
+
 
 
 
